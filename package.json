@@ -34,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^20.14.10",
     "@types/ua-parser-js": "^0.7.39",
+    "@vercel/node": "^5.5.15",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",
     "vitest": "^2.0.3"
