@@ -7,7 +7,7 @@ const linksConfig: Record<string, LinkConfig> = {
     "androidFlowUrl": "https://mediummasala.github.io/linkedin-whatsapp-redirect/",
     "iosWhatsappBaseUrl": "https://wa.me/",
     "desktopWhatsappBaseUrl": "https://wa.me/",
-    "defaultPhone": "919224262682",
+    "defaultPhone": "919606047104",
     "defaultText": "Hi Tal, count me in!",
     "ogTitle": "Chat with Us on WhatsApp",
     "ogDescription": "Start a conversation instantly via WhatsApp",
