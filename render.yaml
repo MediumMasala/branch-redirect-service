@@ -1,0 +1,24 @@
+# render.yaml - Render Blueprint
+
+services:
+  - type: web
+    name: branch-redirect-service
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: ALLOWED_HOSTS
+        sync: false  # Set manually in dashboard for security
+      - key: RATE_LIMIT_MAX
+        value: 100
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
