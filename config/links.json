@@ -1,22 +1,12 @@
 {
-  "demo": {
-    "androidFlowUrl": "https://flow.example.com/android-whatsapp",
+  "grapevine": {
+    "androidFlowUrl": "https://mediummasala.github.io/linkedin-whatsapp-redirect/",
     "iosWhatsappBaseUrl": "https://wa.me/",
-    "desktopWhatsappBaseUrl": "https://web.whatsapp.com/send",
-    "defaultPhone": "919999999999",
-    "defaultText": "Hello! I came from your link.",
+    "desktopWhatsappBaseUrl": "https://wa.me/",
+    "defaultPhone": "919224262682",
+    "defaultText": "Hi I want to know more about grapevine",
     "ogTitle": "Chat with Us on WhatsApp",
     "ogDescription": "Start a conversation instantly via WhatsApp",
     "ogImage": "https://example.com/og-image.png"
-  },
-  "support": {
-    "androidFlowUrl": "https://flow.example.com/support-flow",
-    "iosWhatsappBaseUrl": "https://api.whatsapp.com/send",
-    "desktopWhatsappBaseUrl": "https://api.whatsapp.com/send",
-    "defaultPhone": "918888888888",
-    "defaultText": "Hi, I need support!",
-    "ogTitle": "Contact Support",
-    "ogDescription": "Get help from our support team via WhatsApp",
-    "ogImage": "https://example.com/support-og.png"
   }
 }

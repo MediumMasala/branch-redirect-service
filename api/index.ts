@@ -7,7 +7,7 @@ import { hashIP } from '../src/lib/hash.js';
 import linksConfig from '../config/links.json' with { type: 'json' };
 
 const ALLOWED_HOSTS = new Set(
-  (process.env.ALLOWED_HOSTS || 'wa.me,api.whatsapp.com,web.whatsapp.com')
+  (process.env.ALLOWED_HOSTS || 'wa.me,api.whatsapp.com,web.whatsapp.com,mediummasala.github.io')
     .split(',')
     .map((h) => h.trim().toLowerCase())
 );
