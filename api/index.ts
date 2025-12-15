@@ -1,176 +1,209 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { detectPlatform, getPlatformInfo } from '../src/lib/platform.js';
-import { isBot, identifyBot } from '../src/lib/isBot.js';
-import { buildRedirectUrl } from '../src/lib/urlBuilder.js';
-import { generatePreviewHtml } from '../src/lib/preview.js';
-import { hashIP } from '../src/lib/hash.js';
-import linksConfig from '../config/links.json' with { type: 'json' };
+import { createHash } from 'crypto';
 
-const ALLOWED_HOSTS = new Set(
-  (process.env.ALLOWED_HOSTS || 'wa.me,api.whatsapp.com,web.whatsapp.com,mediummasala.github.io')
-    .split(',')
-    .map((h) => h.trim().toLowerCase())
-);
+// Inline config to avoid import issues
+const linksConfig: Record<string, LinkConfig> = {
+  "grapevine": {
+    "androidFlowUrl": "https://mediummasala.github.io/linkedin-whatsapp-redirect/",
+    "iosWhatsappBaseUrl": "https://wa.me/",
+    "desktopWhatsappBaseUrl": "https://wa.me/",
+    "defaultPhone": "919224262682",
+    "defaultText": "Hi I want to know more about grapevine",
+    "ogTitle": "Chat with Us on WhatsApp",
+    "ogDescription": "Start a conversation instantly via WhatsApp",
+    "ogImage": "https://example.com/og-image.png"
+  }
+};
 
-function addSecurityHeaders(res: VercelResponse) {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+interface LinkConfig {
+  androidFlowUrl: string;
+  iosWhatsappBaseUrl: string;
+  desktopWhatsappBaseUrl: string;
+  defaultPhone?: string;
+  defaultText?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+}
+
+const ALLOWED_HOSTS = new Set([
+  'wa.me',
+  'api.whatsapp.com',
+  'web.whatsapp.com',
+  'mediummasala.github.io'
+]);
+
+// Platform detection
+type Platform = 'ios' | 'android' | 'desktop';
+
+function detectPlatform(userAgent: string | undefined): Platform {
+  if (!userAgent) return 'desktop';
+  if (/(iPhone|iPad|iPod)/i.test(userAgent)) return 'ios';
+  if (/Android/i.test(userAgent)) return 'android';
+  return 'desktop';
+}
+
+// Bot detection
+const BOT_PATTERNS = [
+  /LinkedInBot/i, /Twitterbot/i, /facebookexternalhit/i, /Facebot/i,
+  /Slackbot/i, /Discordbot/i, /WhatsApp/i, /TelegramBot/i,
+  /Googlebot/i, /bingbot/i, /Applebot/i, /Pinterest/i
+];
+
+function isBot(userAgent: string | undefined): boolean {
+  if (!userAgent) return false;
+  return BOT_PATTERNS.some(pattern => pattern.test(userAgent));
+}
+
+// Hash IP
+function hashIP(ip: string | undefined): string {
+  if (!ip) return 'unknown';
+  return createHash('sha256').update(`salt:${ip}`).digest('hex').substring(0, 16);
+}
+
+// Build WhatsApp URL
+function buildWhatsAppUrl(baseUrl: string, phone: string, text: string): string {
+  const url = new URL(baseUrl);
+  const host = url.hostname.toLowerCase();
+
+  if (host === 'wa.me') {
+    url.pathname = `/${phone}`;
+    url.searchParams.set('text', text);
+  } else {
+    url.pathname = '/send';
+    url.searchParams.set('phone', phone);
+    url.searchParams.set('text', text);
+  }
+
+  return url.toString();
+}
+
+// Generate preview HTML
+function generatePreviewHtml(slug: string, config: LinkConfig, queryString: string, baseUrl: string): string {
+  const ogTitle = config.ogTitle || 'Continue to WhatsApp';
+  const ogDescription = config.ogDescription || 'Click to continue';
+  const ogImage = config.ogImage || '';
+  const continueUrl = `/r/${slug}${queryString ? `?${queryString}&` : '?'}_continue=1`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${ogTitle}</title>
+  <meta property="og:title" content="${ogTitle}">
+  <meta property="og:description" content="${ogDescription}">
+  <meta property="og:type" content="website">
+  ${ogImage ? `<meta property="og:image" content="${ogImage}">` : ''}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${ogTitle}">
+  <meta name="twitter:description" content="${ogDescription}">
+  <style>
+    body { font-family: -apple-system, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
+    .container { background: white; border-radius: 16px; padding: 48px; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    h1 { font-size: 24px; margin-bottom: 12px; }
+    p { color: #666; margin-bottom: 32px; }
+    .btn { display: inline-block; background: #25D366; color: white; text-decoration: none; padding: 16px 48px; border-radius: 50px; font-size: 18px; font-weight: 600; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37,211,102,0.4); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${ogTitle}</h1>
+    <p>${ogDescription}</p>
+    <a href="${continueUrl}" class="btn">Continue</a>
+  </div>
+</body>
+</html>`;
 }
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  addSecurityHeaders(res);
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
 
-  const { url } = req;
-  const path = url?.split('?')[0] || '';
+  const path = req.url?.split('?')[0] || '';
 
   // Health check
-  if (path === '/health' || path === '/api/health') {
+  if (path === '/health' || path === '/api/health' || path === '/api') {
     return res.status(200).send('ok');
   }
 
-  // Extract slug from path: /r/:slug or /api/r/:slug
-  const redirectMatch = path.match(/^\/(?:api\/)?r\/([^\/]+)$/);
-  const previewMatch = path.match(/^\/(?:api\/)?preview\/([^\/]+)$/);
-
-  if (redirectMatch) {
-    return handleRedirect(req, res, redirectMatch[1] as string);
+  // Extract slug
+  const match = path.match(/^\/(?:api\/)?r\/([^\/]+)$/);
+  if (!match) {
+    return res.status(404).json({ error: 'Not Found' });
   }
 
-  if (previewMatch) {
-    return handlePreview(req, res, previewMatch[1] as string);
-  }
+  const slug = match[1] as string;
+  const config = linksConfig[slug];
 
-  // 404 for unknown routes
-  return res.status(404).json({
-    error: 'Not Found',
-    message: 'The requested resource does not exist',
-  });
-}
-
-function handleRedirect(req: VercelRequest, res: VercelResponse, slug: string) {
-  const linkConfig = (linksConfig as Record<string, any>)[slug];
-
-  if (!linkConfig) {
-    return res.status(404).json({
-      error: 'Link not found',
-      slug,
-    });
+  if (!config) {
+    return res.status(404).json({ error: 'Link not found', slug });
   }
 
   const userAgent = req.headers['user-agent'] as string | undefined;
   const query = req.query as Record<string, string>;
-  const continueFlag = query._continue;
 
-  // Bot detection
-  const isBotRequest = isBot(userAgent) && continueFlag !== '1';
-
-  if (isBotRequest) {
-    const botName = identifyBot(userAgent);
-    console.log(JSON.stringify({
-      event: 'bot_preview',
-      slug,
-      bot: botName,
-      hashedIp: hashIP(req.headers['x-forwarded-for'] as string),
-    }));
-
-    const queryString = new URLSearchParams(
-      Object.entries(query).filter(([key]) => key !== '_continue')
+  // Bot handling
+  if (isBot(userAgent) && query._continue !== '1') {
+    const qs = new URLSearchParams(
+      Object.entries(query).filter(([k]) => k !== '_continue')
     ).toString();
 
     const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
-    const baseUrl = `${protocol}://${host}`;
+    const host = req.headers.host || 'localhost';
+    const html = generatePreviewHtml(slug, config, qs, `${protocol}://${host}`);
 
-    const html = generatePreviewHtml({
-      slug,
-      linkConfig,
-      queryString,
-      baseUrl,
-    });
-
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(html);
   }
 
-  // Platform detection
-  const platformInfo = getPlatformInfo(userAgent);
-  const platform = platformInfo.platform;
+  // Get phone and text
+  const phone = query.phone || config.defaultPhone;
+  const text = query.text || config.defaultText || '';
 
-  // Build redirect URL
-  const redirectParams: Record<string, string | undefined> = {};
-  for (const [key, value] of Object.entries(query)) {
-    redirectParams[key] = typeof value === 'string' ? value : undefined;
+  if (!phone) {
+    return res.status(400).json({ error: 'Phone number required' });
   }
 
-  const result = buildRedirectUrl(platform, linkConfig, redirectParams, ALLOWED_HOSTS);
+  // Detect platform and build URL
+  const platform = detectPlatform(userAgent);
+  let targetUrl: string;
 
-  if (!result.isValid) {
-    console.error(JSON.stringify({
-      event: 'redirect_error',
-      slug,
-      platform,
-      error: result.error,
-    }));
-
-    if (result.error?.includes('Phone number is required')) {
-      return res.status(400).json({
-        error: 'Phone number is required',
-        message: 'Please provide a phone number via the "phone" query parameter',
-      });
+  if (platform === 'android') {
+    const url = new URL(config.androidFlowUrl);
+    url.searchParams.set('phone', phone);
+    url.searchParams.set('text', text);
+    // Pass through UTM params
+    for (const [key, value] of Object.entries(query)) {
+      if (key.startsWith('utm_') && !url.searchParams.has(key)) {
+        url.searchParams.set(key, value);
+      }
     }
-
-    return res.status(500).json({
-      error: 'Failed to build redirect URL',
-      message: result.error,
-    });
+    targetUrl = url.toString();
+  } else if (platform === 'ios') {
+    targetUrl = buildWhatsAppUrl(config.iosWhatsappBaseUrl, phone, text);
+  } else {
+    targetUrl = buildWhatsAppUrl(config.desktopWhatsappBaseUrl, phone, text);
   }
 
-  // Log redirect
+  // Validate host
+  const targetHost = new URL(targetUrl).hostname.toLowerCase();
+  if (!ALLOWED_HOSTS.has(targetHost)) {
+    return res.status(500).json({ error: 'Redirect host not allowed' });
+  }
+
+  // Log
   console.log(JSON.stringify({
     event: 'redirect',
     slug,
     platform,
-    browser: platformInfo.browser,
-    os: platformInfo.os,
     hashedIp: hashIP(req.headers['x-forwarded-for'] as string),
-    targetHost: new URL(result.url).hostname,
+    targetHost
   }));
 
-  // Perform redirect
+  // Redirect
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  return res.redirect(302, result.url);
-}
-
-function handlePreview(req: VercelRequest, res: VercelResponse, slug: string) {
-  const linkConfig = (linksConfig as Record<string, any>)[slug];
-
-  if (!linkConfig) {
-    return res.status(404).json({
-      error: 'Link not found',
-      slug,
-    });
-  }
-
-  const query = req.query as Record<string, string>;
-  const queryString = new URLSearchParams(query).toString();
-
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
-  const baseUrl = `${protocol}://${host}`;
-
-  const html = generatePreviewHtml({
-    slug,
-    linkConfig,
-    queryString,
-    baseUrl,
-  });
-
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=300');
-  return res.status(200).send(html);
+  return res.redirect(302, targetUrl);
 }

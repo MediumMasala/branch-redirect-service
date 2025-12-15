@@ -1,16 +1,5 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "functions": {
-    "api/index.ts": {
-      "runtime": "@vercel/node@3.0.0"
-    }
-  },
   "rewrites": [
-    { "source": "/health", "destination": "/api" },
-    { "source": "/r/:slug", "destination": "/api" },
-    { "source": "/preview/:slug", "destination": "/api" },
     { "source": "/(.*)", "destination": "/api" }
   ]
 }
