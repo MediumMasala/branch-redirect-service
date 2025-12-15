@@ -8,7 +8,7 @@ const linksConfig: Record<string, LinkConfig> = {
     "iosWhatsappBaseUrl": "https://wa.me/",
     "desktopWhatsappBaseUrl": "https://wa.me/",
     "defaultPhone": "919224262682",
-    "defaultText": "Hi I want to know more about grapevine",
+    "defaultText": "Hi Tal, count me in!",
     "ogTitle": "Chat with Us on WhatsApp",
     "ogDescription": "Start a conversation instantly via WhatsApp",
     "ogImage": "https://example.com/og-image.png"
