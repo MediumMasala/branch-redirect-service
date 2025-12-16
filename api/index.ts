@@ -12,10 +12,17 @@ async function logToSheet(data: {
   utm_campaign: string;
 }) {
   try {
-    await fetch(GOOGLE_SHEET_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+    // Use URL params for better compatibility with Google Apps Script
+    const params = new URLSearchParams({
+      slug: data.slug,
+      platform: data.platform,
+      referer: data.referer,
+      utm_source: data.utm_source,
+      utm_campaign: data.utm_campaign,
+    });
+
+    await fetch(`${GOOGLE_SHEET_URL}?${params.toString()}`, {
+      method: 'GET',
     });
   } catch (error) {
     console.error('Failed to log to sheet:', error);
