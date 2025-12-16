@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'crypto';
 
 // Google Sheets Analytics
-const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwgRcn7bQJh1XM_GOPHSE8b5-eX8UX5SS3Y-rDpHG37wmeeciEGHBUKiBFZDuudHlshpA/exec';
+const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwPGF6cnKQ5PPhJvniUAqQaxeuNY5vxRZpM9311XcXLrc3OH_InWD7EBjR0rz5ZgH9lsQ/exec';
 
 async function logToSheet(data: {
   slug: string;
