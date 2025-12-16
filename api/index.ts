@@ -1,6 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'crypto';
 
+// Google Sheets Analytics
+const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwgRcn7bQJh1XM_GOPHSE8b5-eX8UX5SS3Y-rDpHG37wmeeciEGHBUKiBFZDuudHlshpA/exec';
+
+async function logToSheet(data: {
+  slug: string;
+  platform: string;
+  referer: string;
+  utm_source: string;
+  utm_campaign: string;
+}) {
+  try {
+    await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    console.error('Failed to log to sheet:', error);
+  }
+}
+
 // Inline config to avoid import issues
 const linksConfig: Record<string, LinkConfig> = {
   "grapevine": {
@@ -117,7 +138,7 @@ function generatePreviewHtml(slug: string, config: LinkConfig, queryString: stri
 </html>`;
 }
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -194,14 +215,15 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Redirect host not allowed' });
   }
 
-  // Log
-  console.log(JSON.stringify({
-    event: 'redirect',
+  // Log to Google Sheet (non-blocking)
+  const referer = req.headers['referer'] || req.headers['referrer'] || '';
+  logToSheet({
     slug,
     platform,
-    hashedIp: hashIP(req.headers['x-forwarded-for'] as string),
-    targetHost
-  }));
+    referer: typeof referer === 'string' ? referer : '',
+    utm_source: query.utm_source || '',
+    utm_campaign: query.utm_campaign || '',
+  });
 
   // Redirect
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
